@@ -1,5 +1,5 @@
-Plugins.OpenCC = {
-  orig_content: "data-opencc-orig-content",
+Plugins.libretranslate = {
+  orig_content: "data-libretranslate-orig-content",
   self: this,
   convert: function (id) {
     const content = App.find(
@@ -31,7 +31,7 @@ Plugins.OpenCC = {
 
     xhr.json(
       "backend.php",
-      App.getPhArgs("opencc", "convert", { id: id }),
+      App.getPhArgs("libretranslate", "convert", { id: id }),
       (reply) => {
         if (content && reply.content) {
           content.setAttribute(self.orig_content, content.innerHTML);
@@ -42,7 +42,7 @@ Plugins.OpenCC = {
           Notify.close();
           if (App.isCombinedMode()) Article.cdmMoveToId(id);
         } else {
-          Notify.error("Unable to convert via OpenCC for this article");
+          Notify.error("Unable to convert via libretranslate for this article");
         }
       }
     );

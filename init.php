@@ -1,5 +1,5 @@
 <?php
-class OpenCC extends Plugin
+class libretranslate extends Plugin
 {
 
     /* @var PluginHost $host */
@@ -8,8 +8,8 @@ class OpenCC extends Plugin
     public function about()
     {
         return array(1.0,
-            "Conversion between Traditional and Simplified Chinese via OpenCC",
-            "HenryQW");
+            "Translation of feed using LibreTranslate",
+            "pir2");
     }
 
     public function flags()
@@ -19,7 +19,8 @@ class OpenCC extends Plugin
 
     public function save()
     {
-        $this->host->set($this, "opencc_API_server", $_POST["opencc_API_server"]);
+        $this->host->set($this, "libretranslate_API_server", $_POST["libretranslate_API_server"]);
+        $this->host->set($this, "libretranslate_target_language", $_POST["libretranslate_target_language"]);
 
         echo __("API server address saved.");
     }
@@ -29,7 +30,7 @@ class OpenCC extends Plugin
         $this->host = $host;
 
         if (version_compare(PHP_VERSION, '7.0.0', '<')) {
-            user_error("opencc requires PHP 7.0", E_USER_WARNING);
+            user_error("libretranslate requires PHP 7.0", E_USER_WARNING);
             return;
         }
 
@@ -39,7 +40,7 @@ class OpenCC extends Plugin
         $host->add_hook($host::HOOK_PREFS_SAVE_FEED, $this);
         $host->add_hook($host::HOOK_ARTICLE_BUTTON, $this);
 
-        $host->add_filter_action($this, "OpenCC", __("OpenCC"));
+        $host->add_filter_action($this, "libretranslate", __("libretranslate"));
     }
 
     public function get_js()
@@ -50,8 +51,8 @@ class OpenCC extends Plugin
     public function hook_article_button($line)
     {
         return "<i class='material-icons'
-			style='cursor : pointer' onclick='Plugins.OpenCC.convert(".$line["id"].")'
-			title='".__('Convert via OpenCC')."'>g_translate</i>";
+			style='cursor : pointer' onclick='Plugins.libretranslate.convert(".$line["id"].")'
+			title='".__('Convert via libretranslate')."'>g_translate</i>";
     }
 
 
@@ -62,7 +63,7 @@ class OpenCC extends Plugin
         }
 
         print "<div dojoType='dijit.layout.AccordionPane' 
-			title=\"<i class='material-icons'>extension</i> ".__('opencc settings (OpenCC)')."\">";
+			title=\"<i class='material-icons'>extension</i> ".__('libretranslate settings (libretranslate)')."\">";
 
         if (version_compare(PHP_VERSION, '7.0.0', '<')) {
             print_error("This plugin requires PHP 7.0.");
@@ -82,13 +83,22 @@ class OpenCC extends Plugin
 
             print \Controls\pluginhandler_tags($this, "save");
 
-            $opencc_API_server = $this->host->get($this, "opencc_API_server");
+            $libretranslate_API_server = $this->host->get($this, "libretranslate_API_server");
+            $libretranslate_target_language = $this->host->get($this, "libretranslate_target_language");
+            
 
-            print "<input dojoType='dijit.form.ValidationTextBox' required='1' name='opencc_API_server' value='" . $opencc_API_server . "'/>";
+            print "<input dojoType='dijit.form.ValidationTextBox' required='1' name='libretranslate_API_server' value='" . $libretranslate_API_server . "'/>";
 
-            print "&nbsp;<label for='opencc_API_server'>" . __("OpenCC API server address, with HTTP/HTTPS protocol.") . "</label>";
+            print "&nbsp;<label for='libretranslate_API_server'>" . __("LibreTranslate API server address, with HTTP/HTTPS protocol. e.g. https://ip-address:port/translate") . "</label>";
 
-            print "<p>Read the <a href='http://ttrss.henry.wang/#opencc-simp-trad-chinese-conversion'>documents</a>.</p>";
+            print "<input dojoType='dijit.form.ValidationTextBox' required='1' name='libretranslate_target_language' value='" . $libretranslate_target_language . "'/>";
+
+            print "&nbsp;<label for='libretranslate_API_server'>" . __("LibreTranslate target language Default en.") . "</label>";
+    
+    
+
+            print "<p>Read the <a href='https://github.com/pir2/ttrss_libretranslate'>documents</a>.</p>";
+            print "<p>Read the <a href='https://www.argosopentech.com/argospm/index/'>Target Language List</a>.</p>";
             print "<button dojoType=\"dijit.form.Button\" type=\"submit\" class=\"alt-primary\">".__('Save')."</button>";
 
             print "</form>";
@@ -121,7 +131,7 @@ class OpenCC extends Plugin
 
     public function hook_prefs_edit_feed($feed_id)
     {
-        print "<header>".__("OpenCC")."</header>";
+        print "<header>".__("LibreTranslate")."</header>";
         print "<section>";
 
         $enabled_feeds = $this->host->get($this, "enabled_feeds");
@@ -134,8 +144,8 @@ class OpenCC extends Plugin
 
         print "<fieldset>";
 
-        print "<label class='checkbox'><input dojoType='dijit.form.CheckBox' type='checkbox' id='opencc_enabled'
-				name='opencc_enabled' $checked>&nbsp;".__('Enable OpenCC')."</label>";
+        print "<label class='checkbox'><input dojoType='dijit.form.CheckBox' type='checkbox' id='libretranslate_enabled'
+				name='libretranslate_enabled' $checked>&nbsp;".__('Enable libretranslate')."</label>";
     
         print "</fieldset>";
     
@@ -149,7 +159,7 @@ class OpenCC extends Plugin
             $enabled_feeds = array();
         }
 
-        $enable = checkbox_to_sql_bool($_POST["opencc_enabled"]);
+        $enable = checkbox_to_sql_bool($_POST["libretranslate_enabled"]);
         $key = array_search($feed_id, $enabled_feeds);
 
         if ($enable) {
@@ -174,46 +184,47 @@ class OpenCC extends Plugin
     }
     
     
-    public function send_request($title, $content)
+    public function send_request($content)
     {
         $ch = curl_init();
-        $opencc_API_server = $this->host->get($this, "opencc_API_server");
-        $request_headers = array();
-        $request_body = array(
-                'title' => urlencode($title),
-                'content' => urlencode($content)
+        $libretranslate_API_server = $this->host->get($this, "libretranslate_API_server");
+        $libretranslate_target_language = $this->host->get($this, "libretranslate_target_language");
+        $request_headers = array('Content-Type: application/json');
+        $request_body = json_encode(array(
+                'source' => "auto",    
+                'q' => $content, 
+                'target' => $libretranslate_target_language,
+                'format' => "html"
+            )
             );
 
-        $request_body_string = "";
-
-        foreach ($request_body as $key=>$value) {
-            $request_body_string .= $key.'='.$value.'&';
-        }
-        rtrim($request_body_string, '&');
-    
-        curl_setopt($ch, CURLOPT_URL, $opencc_API_server);
+        curl_setopt($ch, CURLOPT_URL, $libretranslate_API_server);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($ch, CURLOPT_HTTPHEADER, $request_headers);
         curl_setopt($ch, CURLOPT_ENCODING, "UTF-8");
-        curl_setopt($ch, CURLOPT_POST, count($request_body));
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $request_body_string);
-    
+        curl_setopt($ch, CURLOPT_POST, 1);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $request_body);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 0); 
+        curl_setopt($ch, CURLOPT_TIMEOUT, 400); //timeout in seconds        
+
         $output = json_decode(curl_exec($ch));
         curl_close($ch);
-
         return $output;
     }
     
     public function process_article($article)
     {
-        $output = $this->send_request($article["title"], $article["content"]);
-
-        if ($output->title) {
-            $article["title"] = $output->title;
+        
+        $title = $this->send_request($article["title"]);
+        if ($title->translatedText) {
+            $article["title"] = $title->translatedText;
         }
 
-        if ($output->content) {
-            $article["content"] = $output->content;
+        $content = $this->send_request($article["content"]);
+        if ($content->translatedText) {
+            $article["content"] = "Language: " . $content->detectedLanguage->language .
+                     "\nConfidence: " . $content->detectedLanguage->confidence . 
+                     "\n\n" . $content->translatedText;
         }
 
         return $article;
@@ -263,19 +274,12 @@ class OpenCC extends Plugin
         $sth->execute([$article_id]);
 
         if ($row = $sth->fetch()) {
-            $output = $this->send_request($row["title"], $row["content"]);
+            $article = array(
+				'title' => $row["title"],
+				'content' => $row["content"]
+				);
+            $output = $this->process_article($article);
+			print json_encode($output);            
         }
-
-        $result=[];
-        
-        if ($output->title) {
-            $result["title"] = $output->title;
-        }
-
-        if ($output->content) {
-            $result["content"] = $output->content;
-        }
-
-        print json_encode($result);
     }
 }
